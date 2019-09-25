@@ -1,12 +1,15 @@
 package com.coolweather.android;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -34,6 +37,9 @@ import okhttp3.Callback;
 import okhttp3.Response;
 
 public class WeatherActivity extends AppCompatActivity {
+
+    public SwipeRefreshLayout swipeRefresh;
+
     public DrawerLayout drawerLayout;
 
     private ScrollView weatherLayout;
@@ -62,7 +68,8 @@ public class WeatherActivity extends AppCompatActivity {
 
     private ImageView bingPicImg;
 
-    private String mWeatherId;
+    public String mWeatherId;
+
 
     private WeatherForecast weatherForecast;
     private WeatherLifestyle weatherLifestyle;
@@ -88,7 +95,9 @@ public class WeatherActivity extends AppCompatActivity {
         @Override
         public void OnFailed() {
             Log.d("<<<","fAILED");
+            Looper.prepare();
             Toast.makeText(getApplicationContext(),"网络连接错误",Toast.LENGTH_SHORT).show();
+            Looper.loop();
         }
     };
 
@@ -111,7 +120,9 @@ public class WeatherActivity extends AppCompatActivity {
 
         @Override
         public void OnFailed() {
+            Looper.prepare();
             Toast.makeText(getApplicationContext(),"网络连接错误",Toast.LENGTH_SHORT).show();
+            Looper.loop();
             Log.d("<<<","fAILED");
         }
     };
@@ -136,7 +147,9 @@ public class WeatherActivity extends AppCompatActivity {
         @Override
         public void OnFailed() {
             Log.d("<<<","fAILED");
+            Looper.prepare();
             Toast.makeText(getApplicationContext(),"网络连接错误",Toast.LENGTH_SHORT).show();
+            Looper.loop();
         }
     };
 
@@ -164,6 +177,10 @@ public class WeatherActivity extends AppCompatActivity {
         sportText = (TextView) findViewById(R.id.sport_text);
         bigForecastLayout = findViewById(R.id.big_forecast_layout);
         bingPicImg = (ImageView) findViewById(R.id.bing_pic_img);
+        swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh);
+        swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
+        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        navButton = (Button) findViewById(R.id.nav_button);
 
         SharedPreferences preferences = getSharedPreferences("pic",MODE_PRIVATE);
         String bingPic = preferences.getString("bing_pic", null);
@@ -189,15 +206,32 @@ public class WeatherActivity extends AppCompatActivity {
             // 无缓存时去服务器查询天气
             mWeatherId = getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.INVISIBLE);
-            HttpUtil.snedRequest(mWeatherId,"lifestyle",handleLifestyle);
-            HttpUtil.snedRequest(mWeatherId,"now",handleNow);
-            HttpUtil.snedRequest(mWeatherId,"forecast",handleForecast);
-       // }
+        requestWeather(mWeatherId);
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(mWeatherId);
+            }
+        });
+        navButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
+        // }
        // if (forecast != null && now!=null &&lifestyle!=null)
        // showWeatherInfo();
 
 
     }
+
+    public void requestWeather(String id) {
+        HttpUtil.snedRequest(id,"lifestyle",handleLifestyle);
+        HttpUtil.snedRequest(id,"now",handleNow);
+        HttpUtil.snedRequest(id,"forecast",handleForecast);
+    }
+
     private void showWeatherInfo(){
         showWeatherNow();
         showWeatherForecast();
@@ -231,6 +265,7 @@ public class WeatherActivity extends AppCompatActivity {
         }
         if (dailyForecasts.isEmpty())bigForecastLayout.setVisibility(View.INVISIBLE);
         weatherLayout.setVisibility(View.VISIBLE);
+        swipeRefresh.setRefreshing(false);
     }
 
     private void showWeatherNow() {
